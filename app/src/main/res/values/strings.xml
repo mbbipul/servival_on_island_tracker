@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Survival_On_Island</string>
+    <string name="location_permission_denied">GPS service denied by user</string>
 </resources>
