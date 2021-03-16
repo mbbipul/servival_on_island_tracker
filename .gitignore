@@ -13,7 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
-secrets.gradle
+/app/secrets.gradle
 # Built application files
 *.apk
 *.aar
