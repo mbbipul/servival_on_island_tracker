@@ -22,4 +22,10 @@
     <string name="invalid_password">Password must be >5 characters</string>
     <string name="login_failed">"Login failed"</string>
     <string name="logout">Logout</string>
+    <string name="pin_title">Title</string>
+    <string name="pin_details">Details ......</string>
+    <string name="pin_create">Create</string>
+    <string name="cancel">Cancel</string>
+    <string name="pin_create_dialog">Create Pin</string>
+    <string name="open_camera">Open Camera</string>
 </resources>

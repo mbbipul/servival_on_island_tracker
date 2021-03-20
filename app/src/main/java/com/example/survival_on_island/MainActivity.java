@@ -11,7 +11,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -26,7 +25,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.survival_on_island.Models.Pin;
 import com.example.survival_on_island.ui.Home.DownLoadImageTask;
+import com.example.survival_on_island.ui.Home.PinCreateActivity;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
 import com.google.android.gms.common.SignInButton;
@@ -34,7 +35,13 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.database.annotations.Nullable;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.microsoft.maps.GPSMapLocationProvider;
 import com.microsoft.maps.Geopoint;
 import com.microsoft.maps.MapElementLayer;
@@ -42,16 +49,19 @@ import com.microsoft.maps.MapHoldingEventArgs;
 import com.microsoft.maps.MapIcon;
 import com.microsoft.maps.MapImage;
 import com.microsoft.maps.MapRenderMode;
-import com.microsoft.maps.MapTappedEventArgs;
 import com.microsoft.maps.MapUserInterfaceOptions;
 import com.microsoft.maps.MapUserLocation;
 import com.microsoft.maps.MapUserLocationTrackingState;
 import com.microsoft.maps.MapView;
 import com.microsoft.maps.OnMapHoldingListener;
-import com.microsoft.maps.OnMapTappedListener;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_PIN_REFS;
+import static com.example.survival_on_island.utils.FirebaseUtils.getCurrentUser;
+import static com.example.survival_on_island.utils.FirebaseUtils.isUserLoggedIn;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener,
        OnMapHoldingListener,
@@ -60,6 +70,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String TAG = "LOG_FOR_MAIN_ACTIVITY";
     private static final int REQUEST_LOCATION_PERMISSION = 2345;
     private static final int RC_SIGN_IN = 1245 ;
+
+    FirebaseFirestore db;
 
     private MapView mMapView;
     FrameLayout bingMapLayout;
@@ -79,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        db = FirebaseFirestore.getInstance();
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
@@ -234,18 +247,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    private void showSnackMessage(String message){
-        Snackbar.make(bingMapLayout, message, Snackbar.LENGTH_LONG)
-                .setAction("CLOSE", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-
-                    }
-                })
-                .setActionTextColor(getResources().getColor(android.R.color.holo_red_light ))
-                .show();
-    }
-
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
@@ -287,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void updateUI() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        FirebaseUser currentUser = getCurrentUser();
         if (currentUser != null){
             signInButton.setVisibility(View.GONE);
             navProfileInfo.setVisibility(View.VISIBLE);
@@ -297,6 +298,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             userFullNameV.setText(currentUser.getDisplayName());
             userEmaillV.setText(currentUser.getEmail());
+            showAllPin();
             return;
         }
 
@@ -307,15 +309,46 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+
+    private void showAllPin(){
+        db.collection(FIRESTORE_PIN_REFS).addSnapshotListener(new EventListener<QuerySnapshot>() {
+            @Override
+            public void onEvent(@Nullable QuerySnapshot value,
+                                @Nullable FirebaseFirestoreException e) {
+                if (e != null) {
+                    Log.w(TAG, "Listen failed.", e);
+                    return;
+                }
+
+                Bitmap pinBitmap = drawableToBitmap(getDrawable(R.drawable.ic_baseline_person_pin_24));
+
+
+                for (QueryDocumentSnapshot doc : value) {
+                    Pin pin = doc.toObject(Pin.class);
+                    if(pin != null){
+                        MapIcon pushpin = new MapIcon();
+                        Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
+
+                        pushpin.setLocation(location);
+                        pushpin.setTitle(pin.getTitle());
+                        pushpin.setImage(new MapImage(pinBitmap));
+                        mPinLayer.getElements().add(pushpin);
+                    }
+                }
+            }
+        });
+    }
+
     private void addPin(Geopoint location,String title){
-        Bitmap pinBitmap = drawableToBitmap(getDrawable(R.drawable.ic_baseline_add_location_alt_24));
+        if(isUserLoggedIn()){
+            Intent pinCreateIntent = new Intent(this, PinCreateActivity.class);
+            pinCreateIntent.putExtra("latitude",location.getPosition().getLatitude());
+            pinCreateIntent.putExtra("longitude",location.getPosition().getLongitude());
 
-        MapIcon pushpin = new MapIcon();
-        pushpin.setLocation(location);
-        pushpin.setTitle(title);
-        pushpin.setImage(new MapImage(pinBitmap));
-
-        mPinLayer.getElements().add(pushpin);
+            startActivity(pinCreateIntent);
+        }else {
+            showSnackMessage("Log in to Create a Pin");
+        }
     }
 
     public static Bitmap drawableToBitmap (Drawable drawable) {
@@ -339,5 +372,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawable.draw(canvas);
         return bitmap;
     }
+
+    private void showSnackMessage(String message){
+        Snackbar.make(bingMapLayout, message, Snackbar.LENGTH_LONG)
+                .setAction("CLOSE", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+
+                    }
+                })
+                .setActionTextColor(getResources().getColor(android.R.color.holo_red_light ))
+                .show();
+    }
+
 
 }

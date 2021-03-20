@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.survival_on_island">
-
+    <uses-feature android:name="android.hardware.camera"
+        android:required="true" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
@@ -12,6 +13,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Survival_On_Island">
+        <activity
+            android:theme="@android:style/Theme.Material.Dialog"
+            android:label="@string/pin_create_dialog"
+            android:name=".ui.Home.PinCreateActivity">
+
+
+        </activity>
         <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.Survival_On_Island.NoActionBar">
