@@ -10,6 +10,11 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -29,17 +34,28 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.GeoPoint;
 import com.microsoft.maps.GPSMapLocationProvider;
+import com.microsoft.maps.Geopoint;
+import com.microsoft.maps.MapElementLayer;
+import com.microsoft.maps.MapHoldingEventArgs;
+import com.microsoft.maps.MapIcon;
+import com.microsoft.maps.MapImage;
 import com.microsoft.maps.MapRenderMode;
+import com.microsoft.maps.MapTappedEventArgs;
 import com.microsoft.maps.MapUserInterfaceOptions;
 import com.microsoft.maps.MapUserLocation;
 import com.microsoft.maps.MapUserLocationTrackingState;
 import com.microsoft.maps.MapView;
+import com.microsoft.maps.OnMapHoldingListener;
+import com.microsoft.maps.OnMapTappedListener;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener,
+       OnMapHoldingListener,
+        View.OnClickListener {
 
     private static final String TAG = "LOG_FOR_MAIN_ACTIVITY";
     private static final int REQUEST_LOCATION_PERMISSION = 2345;
@@ -53,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     TextView userEmaillV;
     ImageView profileImageView;
     MenuItem logoutMenu;
+    private MapElementLayer mPinLayer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,7 +109,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mMapView.setCredentialsKey(BuildConfig.BING_MAP_CREDENTIALS_KEY); // set bing map api key
         MapUserInterfaceOptions uiOptions = mMapView.getUserInterfaceOptions();
         uiOptions.setUserLocationButtonVisible(true);
-
+        mMapView.addOnMapHoldingListener(this);
+        mPinLayer = new MapElementLayer();
+        mMapView.getLayers().add(mPinLayer);
 
         bingMapLayout.addView(mMapView); // add Bing map view to frame
         mMapView.onCreate(savedInstanceState);
@@ -241,6 +260,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
+    public boolean onMapHolding(MapHoldingEventArgs mapHoldingEventArgs) {
+        addPin(mapHoldingEventArgs.location," Pin ");
+        return true;
+    }
+
+    @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.sign_in_button:
@@ -281,4 +306,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         profileImageView.setImageResource(R.drawable.ic_user_icon);
 
     }
+
+    private void addPin(Geopoint location,String title){
+        Bitmap pinBitmap = drawableToBitmap(getDrawable(R.drawable.ic_baseline_add_location_alt_24));
+
+        MapIcon pushpin = new MapIcon();
+        pushpin.setLocation(location);
+        pushpin.setTitle(title);
+        pushpin.setImage(new MapImage(pinBitmap));
+
+        mPinLayer.getElements().add(pushpin);
+    }
+
+    public static Bitmap drawableToBitmap (Drawable drawable) {
+        Bitmap bitmap = null;
+
+        if (drawable instanceof BitmapDrawable) {
+            BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
+            if(bitmapDrawable.getBitmap() != null) {
+                return bitmapDrawable.getBitmap();
+            }
+        }
+
+        if(drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
+            bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888); // Single color bitmap will be created of 1x1 pixel
+        } else {
+            bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        }
+
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+        return bitmap;
+    }
+
 }
