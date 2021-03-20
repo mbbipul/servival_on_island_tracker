@@ -8,14 +8,19 @@ import androidx.core.app.ActivityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -45,6 +50,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.microsoft.maps.GPSMapLocationProvider;
 import com.microsoft.maps.Geopoint;
 import com.microsoft.maps.MapElementLayer;
+import com.microsoft.maps.MapFlyout;
 import com.microsoft.maps.MapHoldingEventArgs;
 import com.microsoft.maps.MapIcon;
 import com.microsoft.maps.MapImage;
@@ -58,6 +64,7 @@ import com.microsoft.maps.OnMapHoldingListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_PIN_REFS;
 import static com.example.survival_on_island.utils.FirebaseUtils.getCurrentUser;
@@ -306,6 +313,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navProfileInfo.setVisibility(View.GONE);
         logoutMenu.setVisible(false);
         profileImageView.setImageResource(R.drawable.ic_user_icon);
+        mPinLayer.getElements().clear();
 
     }
 
@@ -320,19 +328,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
 
-                Bitmap pinBitmap = drawableToBitmap(getDrawable(R.drawable.ic_baseline_person_pin_24));
-
-
                 for (QueryDocumentSnapshot doc : value) {
                     Pin pin = doc.toObject(Pin.class);
                     if(pin != null){
-                        MapIcon pushpin = new MapIcon();
-                        Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
+                        try {
+                            Bitmap pinBitmaps = new DownLoadImageTask(null)
+                                    .execute(pin.getImageUrl()).get();
+                            Bitmap pinBitmap = getMarkerBitmapFromView();
+                            MapIcon pushpin = new MapIcon();
+                            Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
 
-                        pushpin.setLocation(location);
-                        pushpin.setTitle(pin.getTitle());
-                        pushpin.setImage(new MapImage(pinBitmap));
-                        mPinLayer.getElements().add(pushpin);
+                            pushpin.setLocation(location);
+                            pushpin.setTitle(pin.getTitle());
+                            pushpin.setImage(new MapImage(pinBitmap));
+                            mPinLayer.getElements().add(pushpin);
+                        } catch (ExecutionException executionException) {
+                            executionException.printStackTrace();
+                        } catch (InterruptedException interruptedException) {
+                            interruptedException.printStackTrace();
+                        }
                     }
                 }
             }
@@ -385,5 +399,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .show();
     }
 
+    private Bitmap getMarkerBitmapFromView() {
+
+        View customMarkerView = ((LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.custom_push_pin, null);
+
+        customMarkerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        customMarkerView.layout(0, 0, customMarkerView.getMeasuredWidth(), customMarkerView.getMeasuredHeight());
+        customMarkerView.buildDrawingCache();
+        Bitmap returnedBitmap = Bitmap.createBitmap(customMarkerView.getMeasuredWidth(), customMarkerView.getMeasuredHeight(),
+                Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(returnedBitmap);
+        canvas.drawColor(Color.WHITE, PorterDuff.Mode.SRC_IN);
+        Drawable drawable = customMarkerView.getBackground();
+        if (drawable != null)
+            drawable.draw(canvas);
+        customMarkerView.draw(canvas);
+        return returnedBitmap;
+    }
 
 }

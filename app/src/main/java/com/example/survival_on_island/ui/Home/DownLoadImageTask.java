@@ -40,6 +40,8 @@ public class DownLoadImageTask extends AsyncTask<String,Void, Bitmap> {
             Runs on the UI thread after doInBackground(Params...).
      */
     protected void onPostExecute(Bitmap result){
-        imageView.setImageBitmap(result);
+        if(imageView != null){
+            imageView.setImageBitmap(result);
+        }
     }
 }

@@ -21,6 +21,7 @@ import androidx.annotation.NonNull;
 import com.example.survival_on_island.MainActivity;
 import com.example.survival_on_island.Models.Pin;
 import com.example.survival_on_island.R;
+import com.example.survival_on_island.utils.ImageUtils;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.snackbar.Snackbar;
@@ -41,6 +42,7 @@ import static android.content.ContentValues.TAG;
 import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_PIN_REFS;
 import static com.example.survival_on_island.utils.FirebaseUtils.getCurrentUser;
 import static com.example.survival_on_island.utils.FirebaseUtils.isUserLoggedIn;
+import static com.example.survival_on_island.utils.ImageUtils.ResizedBitmap;
 
 public class PinCreateActivity extends Activity implements View.OnClickListener {
 
@@ -198,6 +200,7 @@ public class PinCreateActivity extends Activity implements View.OnClickListener 
         pinImage.setDrawingCacheEnabled(true);
         pinImage.buildDrawingCache();
         Bitmap bitmap = ((BitmapDrawable) pinImage.getDrawable()).getBitmap();
+        bitmap = ResizedBitmap(bitmap,200,200);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
         byte[] data = baos.toByteArray();
