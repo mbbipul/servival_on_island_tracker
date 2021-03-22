@@ -6,6 +6,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class FirebaseUtils {
 
     public static final String FIRESTORE_PIN_REFS = "pins";
+    public static final String FIRESTORE_USERS_REFS = "users";
 
     public static FirebaseUser getCurrentUser(){
         return FirebaseAuth.getInstance().getCurrentUser();

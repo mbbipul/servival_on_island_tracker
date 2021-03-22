@@ -32,7 +32,7 @@
                 android:layout_height="100dp"
                 android:layout_width="match_parent"
                 android:id="@+id/pin_image"
-                android:src="@drawable/ic_baseline_camera_24"
+                android:src="@mipmap/island"
                 android:layout_alignParentTop="true"
                 android:layout_centerHorizontal="true" />
         </androidx.cardview.widget.CardView>

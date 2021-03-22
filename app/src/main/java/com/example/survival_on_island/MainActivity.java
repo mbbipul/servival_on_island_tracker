@@ -17,7 +17,6 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -31,17 +30,22 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.survival_on_island.Models.Pin;
+import com.example.survival_on_island.Models.User;
 import com.example.survival_on_island.ui.Home.DownLoadImageTask;
 import com.example.survival_on_island.ui.Home.PinCreateActivity;
+import com.example.survival_on_island.utils.ImageUtils;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
 import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.annotations.Nullable;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
@@ -50,7 +54,6 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.microsoft.maps.GPSMapLocationProvider;
 import com.microsoft.maps.Geopoint;
 import com.microsoft.maps.MapElementLayer;
-import com.microsoft.maps.MapFlyout;
 import com.microsoft.maps.MapHoldingEventArgs;
 import com.microsoft.maps.MapIcon;
 import com.microsoft.maps.MapImage;
@@ -61,12 +64,12 @@ import com.microsoft.maps.MapUserLocationTrackingState;
 import com.microsoft.maps.MapView;
 import com.microsoft.maps.OnMapHoldingListener;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_PIN_REFS;
+import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_USERS_REFS;
 import static com.example.survival_on_island.utils.FirebaseUtils.getCurrentUser;
 import static com.example.survival_on_island.utils.FirebaseUtils.isUserLoggedIn;
 
@@ -211,7 +214,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Toast.makeText(this,"Login check on act",Toast.LENGTH_LONG);
 
             if (resultCode == RESULT_OK) {
+
+                User user = new User();
+                user.setUserEmail(getCurrentUser().getEmail());
+                user.setUserFullname(getCurrentUser().getDisplayName());
+                user.setUserProfileImageUrl(String.valueOf(getCurrentUser().getPhotoUrl()));
+
                 // Successfully signed in
+                db.collection(FIRESTORE_USERS_REFS).document(getCurrentUser().getUid()).set(user);
                 updateUI();
 
                 // ...
@@ -331,22 +341,50 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 for (QueryDocumentSnapshot doc : value) {
                     Pin pin = doc.toObject(Pin.class);
                     if(pin != null){
-                        try {
-                            Bitmap pinBitmaps = new DownLoadImageTask(null)
-                                    .execute(pin.getImageUrl()).get();
-                            Bitmap pinBitmap = getMarkerBitmapFromView();
-                            MapIcon pushpin = new MapIcon();
-                            Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
+                            DocumentReference docRef = db.collection(FIRESTORE_USERS_REFS).document(pin.getCreatedBY());
+                            docRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                                @Override
+                                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                    if (task.isSuccessful()) {
+                                        DocumentSnapshot document = task.getResult();
+                                        if (document.exists()) {
+                                            Log.d(TAG, "DocumentSnapshot data: " + document.getData());
 
-                            pushpin.setLocation(location);
-                            pushpin.setTitle(pin.getTitle());
-                            pushpin.setImage(new MapImage(pinBitmap));
-                            mPinLayer.getElements().add(pushpin);
-                        } catch (ExecutionException executionException) {
-                            executionException.printStackTrace();
-                        } catch (InterruptedException interruptedException) {
-                            interruptedException.printStackTrace();
-                        }
+
+                                            try {
+                                                Bitmap pinBitmap = new DownLoadImageTask(null)
+                                                        .execute(pin.getImageUrl()).get();
+
+
+                                                User user = document.toObject(User.class);
+
+                                                Bitmap userImage = new DownLoadImageTask(null)
+                                                        .execute(user.getUserProfileImageUrl()).get();
+                                                Bitmap customPinBitmap = getMarkerBitmapFromView(pinBitmap,
+                                                        pin.getTitle(),user.getUserFullname(),pin.getCreatedAt(),userImage);
+
+                                                MapIcon pushpin = new MapIcon();
+                                                Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
+
+                                                pushpin.setLocation(location);
+                                                pushpin.setTitle(pin.getTitle());
+                                                pushpin.setImage(new MapImage(customPinBitmap));
+                                                mPinLayer.getElements().add(pushpin);
+                                            } catch (ExecutionException executionException) {
+                                                executionException.printStackTrace();
+                                            } catch (InterruptedException interruptedException) {
+                                                interruptedException.printStackTrace();
+                                            }
+
+                                        } else {
+                                            Log.d(TAG, "No such document");
+                                        }
+                                    } else {
+                                        Log.d(TAG, "get failed with ", task.getException());
+                                    }
+                                }
+                            });
+
                     }
                 }
             }
@@ -399,9 +437,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .show();
     }
 
-    private Bitmap getMarkerBitmapFromView() {
+    private Bitmap getMarkerBitmapFromView(Bitmap _pinImage,String _pinTitle,String _userName ,
+                                            String createdAt,Bitmap userProfileImage
+                                           ) {
 
         View customMarkerView = ((LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.custom_push_pin, null);
+
+        ImageView pinImage = customMarkerView.findViewById(R.id.pin_image);
+        ImageView pinProfileImage = customMarkerView.findViewById(R.id.profile_image);
+        TextView userName = customMarkerView.findViewById(R.id.user_full_name);
+        TextView pinTitle = customMarkerView.findViewById(R.id.pin_title);
+        TextView createdDate = customMarkerView.findViewById(R.id.pin_created_date);
+
+        pinImage.setImageBitmap(ImageUtils.getclip(_pinImage));
+        pinProfileImage.setImageBitmap(ImageUtils.getclip(userProfileImage));
+        userName.setText(_userName);
+        pinTitle.setText(_pinTitle);
+        createdDate.setText(createdAt.substring(0,20));
 
         customMarkerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         customMarkerView.layout(0, 0, customMarkerView.getMeasuredWidth(), customMarkerView.getMeasuredHeight());
