@@ -12,9 +12,6 @@ public class Pin {
     private String createdBY;
     private String createdAt;
 
-    private List<Comments> comments;
-
-
     public String getTitle() {
         return title;
     }
@@ -71,11 +68,4 @@ public class Pin {
         this.createdAt = createdAt;
     }
 
-    public List<Comments> getComments() {
-        return comments;
-    }
-
-    public void setComments(List<Comments> comments) {
-        this.comments = comments;
-    }
 }

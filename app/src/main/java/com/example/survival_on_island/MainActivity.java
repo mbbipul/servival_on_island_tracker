@@ -43,6 +43,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.annotations.Nullable;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -54,6 +55,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.microsoft.maps.GPSMapLocationProvider;
 import com.microsoft.maps.Geopoint;
 import com.microsoft.maps.MapElementLayer;
+import com.microsoft.maps.MapFlyout;
 import com.microsoft.maps.MapHoldingEventArgs;
 import com.microsoft.maps.MapIcon;
 import com.microsoft.maps.MapImage;
@@ -256,6 +258,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             requestLocationPermission();
         } else if (userLocationTrackingState == MapUserLocationTrackingState.READY)
         {
+            FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
+            firebaseDatabase.getReference().child("ux_users_location").child(getCurrentUser()
+                    .getUid()).setValue(userLocation.getLastLocationData());
 
             userLocation.setVisible(true);
         } else if (userLocationTrackingState == MapUserLocationTrackingState.DISABLED)
@@ -367,8 +372,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                                 Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
 
                                                 pushpin.setLocation(location);
-                                                pushpin.setTitle(pin.getTitle());
                                                 pushpin.setImage(new MapImage(customPinBitmap));
+
+                                                MapFlyout flyout = new MapFlyout();
+                                                flyout.setTitle(pin.getTitle());
+                                                flyout.setDescription(pin.getDetails());
+                                                pushpin.setFlyout(flyout);
+
                                                 mPinLayer.getElements().add(pushpin);
                                             } catch (ExecutionException executionException) {
                                                 executionException.printStackTrace();
