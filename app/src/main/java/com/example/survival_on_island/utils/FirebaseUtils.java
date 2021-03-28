@@ -7,7 +7,7 @@ public class FirebaseUtils {
 
     public static final String FIRESTORE_PIN_REFS = "pins";
     public static final String FIRESTORE_USERS_REFS = "users";
-
+    public static final String DATABASE_USER_REFS ="ux_users_location";
     public static FirebaseUser getCurrentUser(){
         return FirebaseAuth.getInstance().getCurrentUser();
     }

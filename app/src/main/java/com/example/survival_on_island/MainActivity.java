@@ -43,6 +43,10 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.annotations.Nullable;
 import com.google.firebase.firestore.DocumentReference;
@@ -59,6 +63,7 @@ import com.microsoft.maps.MapFlyout;
 import com.microsoft.maps.MapHoldingEventArgs;
 import com.microsoft.maps.MapIcon;
 import com.microsoft.maps.MapImage;
+import com.microsoft.maps.MapLocationData;
 import com.microsoft.maps.MapRenderMode;
 import com.microsoft.maps.MapUserInterfaceOptions;
 import com.microsoft.maps.MapUserLocation;
@@ -66,10 +71,13 @@ import com.microsoft.maps.MapUserLocationTrackingState;
 import com.microsoft.maps.MapView;
 import com.microsoft.maps.OnMapHoldingListener;
 
+import org.w3c.dom.Comment;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static com.example.survival_on_island.utils.FirebaseUtils.DATABASE_USER_REFS;
 import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_PIN_REFS;
 import static com.example.survival_on_island.utils.FirebaseUtils.FIRESTORE_USERS_REFS;
 import static com.example.survival_on_island.utils.FirebaseUtils.getCurrentUser;
@@ -84,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int RC_SIGN_IN = 1245 ;
 
     FirebaseFirestore db;
+    private DatabaseReference mDatabase;
 
     private MapView mMapView;
     FrameLayout bingMapLayout;
@@ -104,6 +113,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setSupportActionBar(toolbar);
 
         db = FirebaseFirestore.getInstance();
+        mDatabase = FirebaseDatabase.getInstance().getReference().child(DATABASE_USER_REFS);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
@@ -137,6 +147,44 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mMapView.addOnMapHoldingListener(this);
         mPinLayer = new MapElementLayer();
         mMapView.getLayers().add(mPinLayer);
+
+        ChildEventListener userLocationsEventListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
+
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildChanged:" + dataSnapshot.getKey());
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
+
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildMoved:" + dataSnapshot.getKey());
+
+
+
+                // ...
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w(TAG, "postComments:onCancelled", databaseError.toException());
+                Toast.makeText(MainActivity.this, "Failed to load comments.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        mDatabase.addChildEventListener(userLocationsEventListener);
 
         bingMapLayout.addView(mMapView); // add Bing map view to frame
         mMapView.onCreate(savedInstanceState);
@@ -258,9 +306,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             requestLocationPermission();
         } else if (userLocationTrackingState == MapUserLocationTrackingState.READY)
         {
+            MapLocationData userLocationGeoPoin = userLocation.getLastLocationData();
             FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
             firebaseDatabase.getReference().child("ux_users_location").child(getCurrentUser()
-                    .getUid()).setValue(userLocation.getLastLocationData());
+                    .getUid()).setValue(userLocationGeoPoin);
+
+            Bitmap customPinBitmap = getUsersLocationPinBitmap();
+
+            MapIcon pushpin = new MapIcon();
+            if(userLocationGeoPoin != null){
+                Geopoint location = new Geopoint(userLocationGeoPoin.getLatitude(),userLocationGeoPoin.getLongitude());
+
+                pushpin.setLocation(location);
+                pushpin.setImage(new MapImage(customPinBitmap));
+
+                MapFlyout flyout = new MapFlyout();
+                flyout.setTitle("pin.getTitle()");
+                flyout.setDescription("pin.getDetails()");
+                pushpin.setFlyout(flyout);
+
+                mPinLayer.getElements().add(pushpin);
+            }
 
             userLocation.setVisible(true);
         } else if (userLocationTrackingState == MapUserLocationTrackingState.DISABLED)
@@ -332,6 +398,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    private void showAllUserLocation(){
+
+    }
 
     private void showAllPin(){
         db.collection(FIRESTORE_PIN_REFS).addSnapshotListener(new EventListener<QuerySnapshot>() {
@@ -445,6 +514,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 })
                 .setActionTextColor(getResources().getColor(android.R.color.holo_red_light ))
                 .show();
+    }
+
+    private Bitmap getUsersLocationPinBitmap(){
+        View customMarkerView = ((LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.user_location_pin, null);
+        customMarkerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        customMarkerView.layout(0, 0, customMarkerView.getMeasuredWidth(), customMarkerView.getMeasuredHeight());
+        customMarkerView.buildDrawingCache();
+        Bitmap returnedBitmap = Bitmap.createBitmap(customMarkerView.getMeasuredWidth(), customMarkerView.getMeasuredHeight(),
+                Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(returnedBitmap);
+        canvas.drawColor(Color.WHITE, PorterDuff.Mode.SRC_IN);
+        Drawable drawable = customMarkerView.getBackground();
+        if (drawable != null)
+            drawable.draw(canvas);
+        customMarkerView.draw(canvas);
+        return returnedBitmap;
     }
 
     private Bitmap getMarkerBitmapFromView(Bitmap _pinImage,String _pinTitle,String _userName ,
