@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private MapElementLayer mPinLayer;
     private MapElementLayer usersLocationLayer;
 
-    HashMap<String, UserLocation> userLocationHashMap;
+    HashMap<String, MapElementLayer> userLocationHashMap;
     ChildEventListener userLocationsEventListener;
     FusedLocationProviderClient client;
     LocationCallback userLocationCallback;
@@ -130,7 +130,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         db = FirebaseFirestore.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference().child(DATABASE_USER_REFS);
-        userLocationHashMap = new HashMap<String, UserLocation>();
+        userLocationHashMap = new HashMap<String, MapElementLayer>();
 
         mPinLayer = new MapElementLayer();
         usersLocationLayer = new MapElementLayer();
@@ -191,23 +191,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
                 Log.d(TAG, "onChildAdded:" + dataSnapshot);
                 UserLocation userLocationGeoPoin = dataSnapshot.getValue(UserLocation.class);
-                userLocationHashMap.put(dataSnapshot.getKey(),userLocationGeoPoin);
-                updateUserLocationPin();
 
+                updateUsersLayerBycheck(dataSnapshot.getKey(),userLocationGeoPoin);
             }
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
                 Log.d(TAG, "onChildChanged:" + dataSnapshot);
                 UserLocation userLocationGeoPoin = dataSnapshot.getValue(UserLocation.class);
-                userLocationHashMap.put(dataSnapshot.getKey(),userLocationGeoPoin);
-                updateUserLocationPin();
+
+                updateUsersLayerBycheck(dataSnapshot.getKey(),userLocationGeoPoin);
             }
 
             @Override
             public void onChildRemoved(DataSnapshot dataSnapshot) {
                 Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
-                updateUserLocationPin();
+                removeUserLocationPin(dataSnapshot.getKey());
             }
 
             @Override
@@ -432,59 +431,74 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navProfileInfo.setVisibility(View.GONE);
         logoutMenu.setVisible(false);
         profileImageView.setImageResource(R.drawable.ic_user_icon);
-        usersLocationLayer.getElements().clear();
-        mPinLayer.getElements().clear();
-
+        mMapView.getLayers().clear();
 
     }
 
-    private void updateUserLocationPin(){
-        usersLocationLayer.getElements().clear();
+    private void removeUserLocationPin(String key){
+        if(userLocationHashMap.containsKey(key)){
+            userLocationHashMap.get(key).getElements().clear();
+            userLocationHashMap.remove(key);
+        }
+    }
 
-        userLocationHashMap.forEach((k,useLoc) -> {
-            DocumentReference docRef = db.collection(FIRESTORE_USERS_REFS).document(k);
-            docRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot document = task.getResult();
-                        if (document.exists()) {
-                            Log.d(TAG, "DocumentSnapshot data: " + document.getData());
+    private void updateUsersLayerBycheck(String key,UserLocation userLocation){
+        if(userLocationHashMap.containsKey(key)){
+            updateUserLocationPin(userLocationHashMap.get(key),key,userLocation);
+        }else{
+            MapElementLayer userMapElementLayer = new MapElementLayer();
+            mMapView.getLayers().add(userMapElementLayer);
+            userLocationHashMap.put(key,userMapElementLayer);
+            updateUserLocationPin(userMapElementLayer,key,userLocation);
+        }
 
-                            try {
-                                User user = document.toObject(User.class);
-                                Bitmap userImage = new DownLoadImageTask(null)
-                                        .execute(user.getUserProfileImageUrl()).get();
-                                Bitmap customPinBitmap = getUsersLocationPinBitmap(userImage);
-                                MapIcon pushpin = new MapIcon();
+    }
 
-                                if(user != null){
-                                    Geopoint location = new Geopoint(useLoc.getLatitude(),useLoc.getLongitude());
+    private void updateUserLocationPin(MapElementLayer layer,String key,UserLocation userLocation){
+        DocumentReference docRef = db.collection(FIRESTORE_USERS_REFS).document(key);
+        docRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document.exists()) {
+                        Log.d(TAG, "DocumentSnapshot data: " + document.getData());
 
-                                    pushpin.setLocation(location);
-                                    pushpin.setImage(new MapImage(customPinBitmap));
-                                    MapFlyout flyout = new MapFlyout();
-                                    flyout.setTitle(user.getUserFullname());
+                        try {
+                            User user = document.toObject(User.class);
+                            Bitmap userImage = new DownLoadImageTask(null)
+                                    .execute(user.getUserProfileImageUrl()).get();
+                            Bitmap customPinBitmap = getUsersLocationPinBitmap(userImage);
+                            MapIcon pushpin = new MapIcon();
+
+                            if(user != null){
+                                Geopoint location = new Geopoint(userLocation.getLatitude(),userLocation.getLongitude());
+
+                                pushpin.setLocation(location);
+                                pushpin.setImage(new MapImage(customPinBitmap));
+                                MapFlyout flyout = new MapFlyout();
+                                flyout.setTitle(user.getUserFullname());
 //                                    flyout.setDescription("pin.getDetails()");
-                                    pushpin.setFlyout(flyout);
-                                    usersLocationLayer.getElements().add(pushpin);
+                                pushpin.setFlyout(flyout);
+                                layer.getElements().clear();
 
-                                }
+                                layer.getElements().add(pushpin);
 
-
-                            } catch (ExecutionException executionException) {
-                                executionException.printStackTrace();
-                            } catch (InterruptedException interruptedException) {
-                                interruptedException.printStackTrace();
                             }
-                        } else {
-                            Log.d(TAG, "No such document");
+
+
+                        } catch (ExecutionException executionException) {
+                            executionException.printStackTrace();
+                        } catch (InterruptedException interruptedException) {
+                            interruptedException.printStackTrace();
                         }
                     } else {
-                        Log.d(TAG, "get failed with ", task.getException());
+                        Log.d(TAG, "No such document");
                     }
+                } else {
+                    Log.d(TAG, "get failed with ", task.getException());
                 }
-            });
+            }
         });
 
     }
