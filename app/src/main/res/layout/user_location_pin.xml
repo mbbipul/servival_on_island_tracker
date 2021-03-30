@@ -3,23 +3,21 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_height="wrap_content"
-    android:padding="5dp"
+    android:padding="3dp"
     android:background="@drawable/user_pin_background"
     android:layout_width="wrap_content">
     <androidx.cardview.widget.CardView
-
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:elevation="12dp"
         android:id="@+id/view2"
         app:cardCornerRadius="40dp"
-
         android:innerRadius="0dp"
         android:shape="ring"
         android:thicknessRatio="1.9">
         <ImageView
-            android:layout_height="60dp"
-            android:layout_width="60dp"
+            android:layout_height="45dp"
+            android:layout_width="45dp"
             android:id="@+id/user_image"
             android:layout_alignParentLeft="true"/>
     </androidx.cardview.widget.CardView>

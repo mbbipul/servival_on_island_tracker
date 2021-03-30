@@ -67,6 +67,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.microsoft.maps.GPSMapLocationProvider;
 import com.microsoft.maps.Geopoint;
+import com.microsoft.maps.MapAnimationKind;
 import com.microsoft.maps.MapElementLayer;
 import com.microsoft.maps.MapFlyout;
 import com.microsoft.maps.MapHoldingEventArgs;
@@ -74,11 +75,14 @@ import com.microsoft.maps.MapIcon;
 import com.microsoft.maps.MapImage;
 import com.microsoft.maps.MapLocationData;
 import com.microsoft.maps.MapRenderMode;
+import com.microsoft.maps.MapScene;
+import com.microsoft.maps.MapTappedEventArgs;
 import com.microsoft.maps.MapUserInterfaceOptions;
 import com.microsoft.maps.MapUserLocation;
 import com.microsoft.maps.MapUserLocationTrackingState;
 import com.microsoft.maps.MapView;
 import com.microsoft.maps.OnMapHoldingListener;
+import com.microsoft.maps.OnMapTappedListener;
 
 import org.w3c.dom.Comment;
 
@@ -96,6 +100,7 @@ import static com.example.survival_on_island.utils.FirebaseUtils.isUserLoggedIn;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener,
        OnMapHoldingListener,
+        OnMapTappedListener,
         View.OnClickListener {
 
     private static final String TAG = "LOG_FOR_MAIN_ACTIVITY";
@@ -166,6 +171,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         MapUserInterfaceOptions uiOptions = mMapView.getUserInterfaceOptions();
         uiOptions.setUserLocationButtonVisible(true);
         mMapView.addOnMapHoldingListener(this);
+        mMapView.addOnMapTappedListener(this);
 
         mMapView.getLayers().add(usersLocationLayer);
         mMapView.getLayers().add(mPinLayer);
@@ -213,10 +219,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             @Override
             public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {
                 Log.d(TAG, "onChildMoved:" + dataSnapshot.getKey());
-
-
-
-                // ...
             }
 
             @Override
@@ -411,6 +413,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void updateUI() {
         FirebaseUser currentUser = getCurrentUser();
         if (currentUser != null){
+
             signInButton.setVisibility(View.GONE);
             navProfileInfo.setVisibility(View.VISIBLE);
             logoutMenu.setVisible(true);
@@ -437,7 +440,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navProfileInfo.setVisibility(View.GONE);
         logoutMenu.setVisible(false);
         profileImageView.setImageResource(R.drawable.ic_user_icon);
-        mMapView.getLayers().clear();
+        mPinLayer.getElements().clear();
+        removeAllUsersPin();
 
     }
 
@@ -446,6 +450,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             userLocationHashMap.get(key).getElements().clear();
             userLocationHashMap.remove(key);
         }
+    }
+
+    private void removeAllUsersPin(){
+        userLocationHashMap.forEach((k,layer) -> {
+            layer.getElements().clear();
+        });
     }
 
     private void updateUsersLayerBycheck(String key,UserLocation userLocation){
@@ -506,6 +516,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void showAllPin(){
+        mPinLayer.getElements().clear();
         db.collection(FIRESTORE_PIN_REFS).addSnapshotListener(new EventListener<QuerySnapshot>() {
             @Override
             public void onEvent(@Nullable QuerySnapshot value,
@@ -653,7 +664,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         pinImage.setImageBitmap(ImageUtils.getclip(_pinImage));
         pinProfileImage.setImageBitmap(ImageUtils.getclip(userProfileImage));
         userName.setText(_userName);
-        pinTitle.setText(_pinTitle);
+        if(_pinTitle.length() > 12){
+            pinTitle.setText(_pinTitle.substring(0,9)+"...");
+        }else{
+            pinTitle.setText(_pinTitle);
+        }
         createdDate.setText(createdAt.substring(0,20));
 
         customMarkerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -677,4 +692,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return r.nextInt(max - min + 1) + min;
     }
 
+    @Override
+    public boolean onMapTapped(MapTappedEventArgs mapTappedEventArgs) {
+        Geopoint mapTapLocation = new Geopoint(mapTappedEventArgs.location.getPosition().getLatitude(),
+                mapTappedEventArgs.location.getPosition().getLongitude());
+        mMapView.setScene(
+                MapScene.createFromLocationAndZoomLevel(mapTapLocation, 10),
+                MapAnimationKind.BOW);
+        return false;
+    }
 }
