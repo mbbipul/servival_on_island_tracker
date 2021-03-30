@@ -9,10 +9,10 @@ import java.io.InputStream;
 import java.net.URL;
 
 public class DownLoadImageTask extends AsyncTask<String,Void, Bitmap>  {
-    ImageView imageView;
+    DownloadImageListner downloadImageListner;
 
-    public DownLoadImageTask(ImageView imageView){
-        this.imageView = imageView;
+    public DownLoadImageTask(DownloadImageListner _downloadImageListner){
+        this.downloadImageListner = _downloadImageListner;
     }
 
     /*
@@ -40,8 +40,6 @@ public class DownLoadImageTask extends AsyncTask<String,Void, Bitmap>  {
             Runs on the UI thread after doInBackground(Params...).
      */
     protected void onPostExecute(Bitmap result){
-        if(imageView != null){
-            imageView.setImageBitmap(result);
-        }
+        downloadImageListner.onFinsh(result);
     }
 }

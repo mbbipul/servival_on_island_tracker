@@ -35,6 +35,7 @@ import com.example.survival_on_island.Models.Pin;
 import com.example.survival_on_island.Models.User;
 import com.example.survival_on_island.Models.UserLocation;
 import com.example.survival_on_island.ui.Home.DownLoadImageTask;
+import com.example.survival_on_island.ui.Home.DownloadImageListner;
 import com.example.survival_on_island.ui.Home.PinCreateActivity;
 import com.example.survival_on_island.utils.ImageUtils;
 import com.firebase.ui.auth.AuthUI;
@@ -414,7 +415,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navProfileInfo.setVisibility(View.VISIBLE);
             logoutMenu.setVisible(true);
 
-            new DownLoadImageTask(profileImageView).execute(String.valueOf(currentUser.getPhotoUrl()));
+            new DownLoadImageTask(new DownloadImageListner() {
+                @Override
+                public void onFinsh(Bitmap result) {
+                    profileImageView.setImageBitmap(result);
+                }
+            }).execute(String.valueOf(currentUser.getPhotoUrl()));
 
             userFullNameV.setText(currentUser.getDisplayName());
             userEmaillV.setText(currentUser.getEmail());
@@ -464,34 +470,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     if (document.exists()) {
                         Log.d(TAG, "DocumentSnapshot data: " + document.getData());
 
-                        try {
-                            User user = document.toObject(User.class);
-                            Bitmap userImage = new DownLoadImageTask(null)
-                                    .execute(user.getUserProfileImageUrl()).get();
-                            Bitmap customPinBitmap = getUsersLocationPinBitmap(userImage);
-                            MapIcon pushpin = new MapIcon();
+                        User user = document.toObject(User.class);
+                        new DownLoadImageTask(new DownloadImageListner() {
+                            @Override
+                            public void onFinsh(Bitmap result) {
+                                Bitmap customPinBitmap = getUsersLocationPinBitmap(result);
+                                MapIcon pushpin = new MapIcon();
 
-                            if(user != null){
-                                Geopoint location = new Geopoint(userLocation.getLatitude(),userLocation.getLongitude());
+                                if(user != null){
+                                    Geopoint location = new Geopoint(userLocation.getLatitude(),userLocation.getLongitude());
 
-                                pushpin.setLocation(location);
-                                pushpin.setImage(new MapImage(customPinBitmap));
-                                MapFlyout flyout = new MapFlyout();
-                                flyout.setTitle(user.getUserFullname());
+                                    pushpin.setLocation(location);
+                                    pushpin.setImage(new MapImage(customPinBitmap));
+                                    MapFlyout flyout = new MapFlyout();
+                                    flyout.setTitle(user.getUserFullname());
 //                                    flyout.setDescription("pin.getDetails()");
-                                pushpin.setFlyout(flyout);
-                                layer.getElements().clear();
+                                    pushpin.setFlyout(flyout);
+                                    layer.getElements().clear();
 
-                                layer.getElements().add(pushpin);
+                                    layer.getElements().add(pushpin);
 
+                                }
                             }
+                        }).execute(user.getUserProfileImageUrl());
 
-
-                        } catch (ExecutionException executionException) {
-                            executionException.printStackTrace();
-                        } catch (InterruptedException interruptedException) {
-                            interruptedException.printStackTrace();
-                        }
                     } else {
                         Log.d(TAG, "No such document");
                     }
@@ -524,37 +526,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                         DocumentSnapshot document = task.getResult();
                                         if (document.exists()) {
                                             Log.d(TAG, "DocumentSnapshot data: " + document.getData());
+                                            new DownLoadImageTask(new DownloadImageListner() {
+                                                @Override
+                                                public void onFinsh(Bitmap pinImage) {
+                                                    User user = document.toObject(User.class);
+
+                                                    new DownLoadImageTask(new DownloadImageListner() {
+                                                        @Override
+                                                        public void onFinsh(Bitmap result) {
+                                                            Bitmap customPinBitmap = getMarkerBitmapFromView(pinImage,
+                                                                    pin.getTitle(),user.getUserFullname(),pin.getCreatedAt(),result);
+
+                                                            MapIcon pushpin = new MapIcon();
+                                                            Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
+
+                                                            pushpin.setLocation(location);
+                                                            pushpin.setImage(new MapImage(customPinBitmap));
+
+                                                            MapFlyout flyout = new MapFlyout();
+                                                            flyout.setTitle(pin.getTitle());
+                                                            flyout.setDescription(pin.getDetails());
+                                                            pushpin.setFlyout(flyout);
+
+                                                            mPinLayer.getElements().add(pushpin);
+                                                        }
+                                                    }).execute(user.getUserProfileImageUrl());
+
+                                                }
+                                            }).execute(pin.getImageUrl());
 
 
-                                            try {
-                                                Bitmap pinBitmap = new DownLoadImageTask(null)
-                                                        .execute(pin.getImageUrl()).get();
-
-
-                                                User user = document.toObject(User.class);
-
-                                                Bitmap userImage = new DownLoadImageTask(null)
-                                                        .execute(user.getUserProfileImageUrl()).get();
-                                                Bitmap customPinBitmap = getMarkerBitmapFromView(pinBitmap,
-                                                        pin.getTitle(),user.getUserFullname(),pin.getCreatedAt(),userImage);
-
-                                                MapIcon pushpin = new MapIcon();
-                                                Geopoint location = new Geopoint(pin.getLatitude(),pin.getLongitude());
-
-                                                pushpin.setLocation(location);
-                                                pushpin.setImage(new MapImage(customPinBitmap));
-
-                                                MapFlyout flyout = new MapFlyout();
-                                                flyout.setTitle(pin.getTitle());
-                                                flyout.setDescription(pin.getDetails());
-                                                pushpin.setFlyout(flyout);
-
-                                                mPinLayer.getElements().add(pushpin);
-                                            } catch (ExecutionException executionException) {
-                                                executionException.printStackTrace();
-                                            } catch (InterruptedException interruptedException) {
-                                                interruptedException.printStackTrace();
-                                            }
 
                                         } else {
                                             Log.d(TAG, "No such document");
