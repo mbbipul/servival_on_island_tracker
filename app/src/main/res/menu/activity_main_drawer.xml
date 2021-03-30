@@ -19,6 +19,11 @@
     </group>
     <group android:id="@+id/grp2" android:checkableBehavior="single">
         <item
+            android:id="@+id/help"
+            android:visible="true"
+            android:icon="@drawable/ic_baseline_help_outline_24"
+            android:title="@string/help" />
+        <item
             android:id="@+id/logout"
             android:visible="false"
             android:icon="@drawable/ic_baseline_exit_to_app_24"

@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -56,6 +57,7 @@ public class PinCreateActivity extends Activity implements View.OnClickListener 
     View parentLayout;
 
     Intent intent;
+    ProgressBar createPinProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +71,7 @@ public class PinCreateActivity extends Activity implements View.OnClickListener 
         pinDetails = findViewById(R.id.pin_details);
         cancelPinCreate = findViewById(R.id.cancel_action);
         createPin = findViewById(R.id.create_pin);
+        createPinProgress = findViewById(R.id.create_pin_progress);
 
         parentLayout = findViewById(R.id.content);
 
@@ -132,6 +135,8 @@ public class PinCreateActivity extends Activity implements View.OnClickListener 
             }
         };
 
+        createPinProgress.setVisibility(View.VISIBLE);
+
         OnSuccessListener uploadPinImageSuccesListner = new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
@@ -162,7 +167,7 @@ public class PinCreateActivity extends Activity implements View.OnClickListener 
                                                 .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
                                                     @Override
                                                     public void onSuccess(DocumentReference documentReference) {
-
+                                                        createPinProgress.setVisibility(View.GONE);
                                                         showSnackMessage("Successfully Created Pin"+pin.getTitle());
                                                         Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.getId());
                                                         finish();

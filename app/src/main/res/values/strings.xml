@@ -28,4 +28,5 @@
     <string name="cancel">Cancel</string>
     <string name="pin_create_dialog">Create Pin</string>
     <string name="open_camera">Open Camera</string>
+    <string name="help">Help</string>
 </resources>

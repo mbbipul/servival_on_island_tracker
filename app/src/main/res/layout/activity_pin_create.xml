@@ -37,6 +37,13 @@
                 android:layout_centerHorizontal="true" />
         </androidx.cardview.widget.CardView>
 
+        <ProgressBar
+            android:id="@+id/create_pin_progress"
+            android:visibility="gone"
+            android:tooltipText="Creating pin"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="match_parent"
+            android:layout_height="58dp" />
         <EditText
             android:id="@+id/pin_title"
             android:layout_width="match_parent"
