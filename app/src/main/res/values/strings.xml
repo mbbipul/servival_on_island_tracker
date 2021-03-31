@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Survival_On_Island</string>
+    <string name="app_name">খোঁজ | Sagashidasui</string>
     <string name="location_permission_denied">GPS service denied by user</string>
     <string name="title_activity_main3">MainActivity3</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
@@ -29,4 +29,7 @@
     <string name="pin_create_dialog">Create Pin</string>
     <string name="open_camera">Open Camera</string>
     <string name="help">Help</string>
+    <string name="show_all">Show Alls</string>
+    <string name="hide_pin">Hide Pins</string>
+    <string name="hide_user_location">Hide User\'s Location</string>
 </resources>

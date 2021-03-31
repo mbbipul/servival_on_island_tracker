@@ -21,6 +21,8 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -319,12 +321,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 db.collection(FIRESTORE_USERS_REFS).document(getCurrentUser().getUid()).set(user);
                 updateUI();
 
-                // ...
             } else {
-                // Sign in failed. If response is null the user canceled the
-                // sign-in flow using the back button. Otherwise check
-                // response.getError().getErrorCode() and handle the error.
-                // ...
+                showSnackMessage("Sign In Failed");
             }
         }
     }
@@ -375,7 +373,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
-
         switch (id){
             case R.id.logout:
                 FirebaseAuth.getInstance().signOut();
@@ -383,6 +380,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.help:
                 showHelpMessage();
+                break;
+            case R.id.show_all:
+                mPinLayer.setVisible(true);
+                toggleAllUsersPin(true);
+                break;
+            case R.id.hide_pin:
+                toggleAllUsersPin(true);
+                mPinLayer.setVisible(false);
+                break;
+            case R.id.hide_user_location:
+                mPinLayer.setVisible(true);
+                toggleAllUsersPin(false);
                 break;
         }
         return true;
@@ -418,24 +427,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void updateUI() {
         FirebaseUser currentUser = getCurrentUser();
         if (currentUser != null){
+            if(isOnline()){
+                signInButton.setVisibility(View.GONE);
+                navProfileInfo.setVisibility(View.VISIBLE);
+                logoutMenu.setVisible(true);
 
-            signInButton.setVisibility(View.GONE);
-            navProfileInfo.setVisibility(View.VISIBLE);
-            logoutMenu.setVisible(true);
+                new DownLoadImageTask(new DownloadImageListner() {
+                    @Override
+                    public void onFinsh(Bitmap result) {
+                        profileImageView.setImageBitmap(result);
+                    }
+                }).execute(String.valueOf(currentUser.getPhotoUrl()));
 
-            new DownLoadImageTask(new DownloadImageListner() {
-                @Override
-                public void onFinsh(Bitmap result) {
-                    profileImageView.setImageBitmap(result);
-                }
-            }).execute(String.valueOf(currentUser.getPhotoUrl()));
+                userFullNameV.setText(currentUser.getDisplayName());
+                userEmaillV.setText(currentUser.getEmail());
+                showAllPin();
 
-            userFullNameV.setText(currentUser.getDisplayName());
-            userEmaillV.setText(currentUser.getEmail());
-            showAllPin();
-
-            mDatabase.addChildEventListener(userLocationsEventListener);
-            requestLocationUpdates();
+                mDatabase.addChildEventListener(userLocationsEventListener);
+                requestLocationUpdates();
+            }else{
+                showSnackMessage("You are offline. Please connect to internet!");
+            }
             return;
         }
 
@@ -450,6 +462,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    public boolean isOnline() {
+        ConnectivityManager cm =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        return netInfo != null && netInfo.isConnectedOrConnecting();
+    }
+
     private void removeUserLocationPin(String key){
         if(userLocationHashMap.containsKey(key)){
             userLocationHashMap.get(key).getElements().clear();
@@ -460,6 +479,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void removeAllUsersPin(){
         userLocationHashMap.forEach((k,layer) -> {
             layer.getElements().clear();
+        });
+    }
+
+    private void toggleAllUsersPin(boolean toggle){
+        userLocationHashMap.forEach((k,layer) -> {
+            layer.setVisible(toggle);
         });
     }
 

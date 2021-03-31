@@ -5,17 +5,17 @@
 
     <group android:id="@+id/grp1" android:checkableBehavior="single">
         <item
-            android:id="@+id/nav_home"
-            android:icon="@drawable/ic_dark"
-            android:title="@string/menu_home" />
+            android:id="@+id/show_all"
+            android:icon="@drawable/ic_baseline_filter_list_24"
+            android:title="@string/show_all" />
         <item
-            android:id="@+id/nav_gallery"
-            android:icon="@drawable/ic_user_icon"
-            android:title="@string/menu_gallery" />
+            android:id="@+id/hide_pin"
+            android:icon="@drawable/ic_baseline_filter_list_24"
+            android:title="@string/hide_pin" />
         <item
-            android:id="@+id/nav_slideshow"
-            android:icon="@drawable/ic_user_icon"
-            android:title="@string/menu_slideshow" />
+            android:id="@+id/hide_user_location"
+            android:icon="@drawable/ic_baseline_filter_list_24"
+            android:title="@string/hide_user_location" />
     </group>
     <group android:id="@+id/grp2" android:checkableBehavior="single">
         <item
