@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">খোঁজ | Sagashidasui</string>
+    <string name="app_name">Ultra-X さがしダス</string>
     <string name="location_permission_denied">GPS service denied by user</string>
     <string name="title_activity_main3">MainActivity3</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
